@@ -1,0 +1,46 @@
+Resumen de la Evaluación:
+
+Se ha llevado a cabo una auditoría de seguridad sobre el host 10.129.25.16 perteneciente a la infraestructura de Hack The Box. 
+El objetivo fue identificar vectores de entrada y extraer la evidencia (flag) de compromiso del sistema. 
+La vulnerabilidad principal detectada es una mala configuración de seguridad en el servicio de acceso remoto.
+
+Fase de Reconocimiento y Enumeración:
+
+Se inició el proceso con un escaneo de puertos TCP para identificar la superficie de ataque.
+
+Resultados del Escaneo:
+
+Puerto 135/139/445 (RPC/NetBIOS/SMB): Servicios estándar de Windows para comunicación en red y archivos compartidos.
+
+Puerto 3389 (ms-wbt-server): Servicio de Escritorio Remoto (RDP) activo.
+
+Fingerprinting del SO: El valor de TTL (Time To Live) de 127 en los paquetes ICMP entrantes indica que el sistema operativo es Windows.
+
+3. Análisis y Explotación
+El análisis del puerto 3389 sugirió la posibilidad de un acceso directo. 
+Se procedió a realizar una prueba de acceso manual utilizando la herramienta xfreerdp, 
+bajo la hipótesis de una política de contraseñas inexistente para cuentas administrativas.
+
+Vector de ataque: Autenticación nula (Blank Password) en la cuenta Administrator.
+
+Comando de Explotación:
+
+xfreerdp /v:10.129.25.16 /u:Administrator /p:"" /cert:ignore
+Resultado: El sistema permitió el establecimiento de una sesión GUI completa con privilegios de NT AUTHORITY\SYSTEM,
+de manera implícita al comprometer la cuenta de administración.
+
+Post-Explotación y Evidencias:
+
+Tras el acceso exitoso, se realizó la recolección de datos en el sistema de archivos:
+
+Directorio de interés: C:\Users\Administrator\Desktop\
+
+Evidencia (Flag): 951fa96d7830c451b536be5a6be008a0
+
+Recomendaciones de Remediación:
+
+Hardening de RDP: Deshabilitar el acceso RDP si no es estrictamente necesario para la operación.
+
+Gestión de Credenciales: Aplicar una política de contraseñas complejas para la cuenta local Administrator.
+
+Network Level Authentication (NLA): Forzar el uso de NLA para asegurar que los usuarios se autentiquen antes de que se establezca una sesión de escritorio remoto.
