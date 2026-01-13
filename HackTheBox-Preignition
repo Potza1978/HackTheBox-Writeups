@@ -1,0 +1,60 @@
+
+Informe inicial:
+
+Resumen: 
+
+Durante la auditoría de la máquina "Preignition", se detectó un servidor web expuesto con configuraciones por defecto. A través de un proceso de enumeración de directorios, 
+se localizó un panel administrativo que permitía el acceso mediante credenciales predeterminadas (admin:admin), 
+resultando en el compromiso total de la aplicación y la obtención de la flag.
+
+Detalle del procedimiento:
+
+Fase 1: Reconocimiento y Escaneo
+El primer paso consistió en identificar los servicios activos en la dirección IP objetivo utilizando Nmap.
+
+Comando ejecutado: nmap -sV -sC -Pn 10.129.25.29
+
+Resultados clave:
+
+Puerto 80/tcp: Abierto.
+
+Servicio: http
+
+Software: nginx 1.14.2
+
+Análisis: 
+
+El servidor web está activo y utiliza una versión específica de nginx. No se detectaron otros puertos abiertos de interés inmediato.
+
+Enumeración Web (Dir Busting):
+Dado que la página principal mostraba el mensaje por defecto de nginx, se procedió a realizar un ataque de fuerza bruta sobre los directorios del servidor para localizar archivos ocultos.
+
+Herramienta: gobuster
+
+Comando ejecutado: gobuster dir -u http://10.129.25.29 -w /usr/share/wordlists/dirb/common.txt -x php
+
+Parámetros: Se utilizó el modo dir y el switch -x php para buscar específicamente scripts de PHP.
+
+Hallazgo:
+
+Se descubrió la ruta /admin.php con un código de estado 200 OK.
+
+Explotación y Acceso:
+
+Se procedió a navegar a la ruta descubierta (http://10.129.25.29/admin.php), la cual presentaba un formulario de inicio de sesión para administradores.
+
+Vector de ataque: Prueba de credenciales por defecto (Default Credentials).
+
+Credenciales exitosas: 
+
+Username: admin
+
+Password: admin
+
+Resultado: El sistema concedió acceso al panel de control, donde se visualizó la flag de éxito.
+
+Post-Explotación
+
+Flag obtenida: 6483bee07c1c1d57f14e5b0717503c73
+
+Impacto: Acceso administrativo total a la interfaz web.
