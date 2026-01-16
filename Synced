@@ -27,7 +27,8 @@ Explotación (Explotación de Rsync):
 
 El protocolo rsync utiliza "módulos" para organizar los directorios compartidos. Nuestro primer paso es listar qué módulos están disponibles de forma pública (anónima).
 
-Paso 1: Listado de módulos
+Listado de módulos:
+
 Utilizamos el comando rsync con la opción --list-only y la sintaxis de doble dos puntos ::.
 
 rsync --list-only 10.129.228.37::
@@ -52,6 +53,7 @@ Para obtener la flag, procedemos a descargar el archivo a nuestra máquina local
 
 rsync 10.129.228.37::public/flag.txt.
 cat flag.txt
+
 Resultado: 
 
 La flag se captura exitosamente, completando el laboratorio.
