@@ -16,7 +16,8 @@ Puerto 3389 (ms-wbt-server): Servicio de Escritorio Remoto (RDP) activo.
 
 Fingerprinting del SO: El valor de TTL (Time To Live) de 127 en los paquetes ICMP entrantes indica que el sistema operativo es Windows.
 
-3. Análisis y Explotación
+Análisis y Explotación:
+
 El análisis del puerto 3389 sugirió la posibilidad de un acceso directo. 
 Se procedió a realizar una prueba de acceso manual utilizando la herramienta xfreerdp, 
 bajo la hipótesis de una política de contraseñas inexistente para cuentas administrativas.
