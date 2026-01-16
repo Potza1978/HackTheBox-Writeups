@@ -38,13 +38,14 @@ Se procedió a realizar una migración a un proceso residente en memoria (notepa
 
 meterpreter > run post/windows/manage/migrate
 
-
 Escalada de Privilegios (Privesc)
 Identificación del Vector
 Se utilizó el módulo local_exploit_suggester para analizar parches faltantes en el sistema operativo.
 
 
-Explotación del Kernel: MS14-070
+Explotación del Kernel: 
+
+MS14-070
 El sistema era vulnerable a una solicitud IOCTL malformada en el controlador tcpip.sys. 
 Este exploit permite inyectar código que se ejecuta con privilegios de nivel de Kernel.
 
@@ -56,7 +57,8 @@ Payload: windows/meterpreter/reverse_tcp
 
 Resultado: Elevación exitosa a NT AUTHORITY\SYSTEM.
 
-Post-Explotación y Obtención de Flags
+Post-Explotación y Obtención de Flags:
+
 En arquitecturas Windows antiguas (NT 5.2), las banderas se encuentran en la estructura de directorios "Documents and Settings".
 
 User Flag: C:\Documents and Settings\Lakis\Desktop\user.txt
