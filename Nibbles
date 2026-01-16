@@ -59,6 +59,7 @@ Análisis de Sudo
 Se comprueban los privilegios de sudo del usuario comprometido:
 
 nibbler@Nibbles:~$ sudo -l
+
 (root) NOPASSWD: /home/nibbler/personal/stuff/monitor.sh
 
 Explotación de Script Hijacking:
@@ -79,11 +80,13 @@ sudo /home/nibbler/personal/stuff/monitor.sh
 Esto nos devuelve una shell con privilegios de ROOT.
 
 Banderas (Flags)
+
 User: c6ebd70c8d77b831728bec54241eb84f (/home/nibbler/user.txt)
 
 Root: 7d88bd04dfbe6fc7608a1aee341aa176 (/root/root.txt)
 
-Hardening y Mitigación
+Hardening y Mitigación:
+
 Autenticación: Implementar un límite de intentos de login (Fail2Ban) para prevenir ataques de fuerza bruta en el panel admin.php.
 
 Seguridad del CMS: Actualizar Nibbleblog a una versión parcheada o migrar a un CMS con soporte activo.
