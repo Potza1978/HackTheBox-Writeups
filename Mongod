@@ -1,7 +1,3 @@
-Este laboratorio está orientado a la enumeración y explotación de una base de datos MongoDB expuesta sin autenticación, 
-un escenario realista y común en entornos mal configurados.
-
-
 Enumeración inicial:
 
 Escaneo de puertos con Nmap
@@ -74,18 +70,18 @@ Se exportaron los hashes a un archivo local (`md5.txt`) para intentar su crackeo
 
 hashcat -m 0 md5.txt /usr/share/wordlists/rockyou.txt --force
 
-
 En este caso, los hashes no fueron crackeados con `rockyou.txt`, pero el objetivo principal del laboratorio era la **exposición de datos**, no la escalada por credenciales.
 
-Obtención de la flag
+Obtención de la flag:
 
 Enumeración de `sensitive_information`
+
 js
 use sensitive_information
 show collections
 Colección encontrada:
 
-* flag
+lag
 Extracción del contenido
 
 js
