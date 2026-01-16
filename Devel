@@ -9,7 +9,8 @@ Port 21 (FTP): Microsoft ftpd (Anonymous login allowed).
 
 Port 80 (HTTP): Microsoft IIS httpd 7.5.
 
-Inspección de FTP
+Inspección de FTP:
+
 Al conectar de forma anónima, se confirmó que el directorio raíz del FTP era el mismo que el del servidor IIS (inetpub\wwwroot). Se verificó capacidad de escritura subiendo un archivo de prueba.
 
 Explotación (Foothold)
@@ -28,7 +29,6 @@ Acceso: Obtenida sesión de Meterpreter como usuario iis apppool\web.
 
 Escalada de Privilegios (Privesc)
 Enumeración Local
-Bash
 
 meterpreter > sysinfo
 # OS: Windows 7 (6.1 Build 7600). Architecture: x86
