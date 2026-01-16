@@ -1,4 +1,3 @@
-
 Introducción:
 
 Grandpa es una máquina clásica que simula un entorno Windows Server 2003. 
@@ -13,7 +12,8 @@ Vector de ataque: Vulnerabilidad RCE en IIS 6.0 (WebDAV)
 
 Técnica de escalada: Token Kidnapping (Churrasco.exe)
 
-Fase de Reconocimiento (Enumeration)
+Fase de Reconocimiento (Enumeration):
+
 El proceso comenzó con un escaneo exhaustivo de puertos utilizando Nmap:
 
 nmap -sC -sV -p- -T4 10.129.36.219
