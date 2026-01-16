@@ -1,4 +1,3 @@
-
 Informe inicial:
 
 Resumen: 
@@ -9,7 +8,8 @@ resultando en el compromiso total de la aplicación y la obtención de la flag.
 
 Detalle del procedimiento:
 
-Fase 1: Reconocimiento y Escaneo
+Reconocimiento y Escaneo
+
 El primer paso consistió en identificar los servicios activos en la dirección IP objetivo utilizando Nmap.
 
 Comando ejecutado: nmap -sV -sC -Pn 10.129.25.29
@@ -27,6 +27,7 @@ Análisis:
 El servidor web está activo y utiliza una versión específica de nginx. No se detectaron otros puertos abiertos de interés inmediato.
 
 Enumeración Web (Dir Busting):
+
 Dado que la página principal mostraba el mensaje por defecto de nginx, se procedió a realizar un ataque de fuerza bruta sobre los directorios del servidor para localizar archivos ocultos.
 
 Herramienta: gobuster
