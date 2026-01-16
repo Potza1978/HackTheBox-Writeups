@@ -43,7 +43,8 @@ Se preparó el listener de Netcat: nc -lvnp 4444.
 
 Se activó el payload navegando a: http://10.129.136.9:8080/shell/.
 
-Post-Explotación
+Post-Explotación:
+
 Tras recibir la conexión en Netcat, se verificó el nivel de privilegios en el sistema:
 
 C:\apache-tomcat-7.0.88> whoami
