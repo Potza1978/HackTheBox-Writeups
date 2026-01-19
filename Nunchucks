@@ -1,0 +1,64 @@
+Reconocimiento y Enumeración:
+
+Escaneo de Red:
+
+Iniciamos con un escaneo de puertos estándar para identificar servicios activos: nmap -sC -sV -oN nmap/initial 10.10.11.122
+
+Puerto 80/443 (HTTP/HTTPS): Redirige a nunchucks.htb.
+
+Enumeración de Subdominios: Usando ffuf o gobuster, se identificó un subdominio crítico: store.nunchucks.htb.
+
+Análisis de la Aplicación:
+
+La tienda utiliza una infraestructura basada en Node.js. Tras analizar las respuestas del servidor, 
+se sospecha del uso de un motor de plantillas por la forma en que se renderizan los inputs dinámicos.
+
+Acceso Inicial: Explotación de SSTI:
+
+En el formulario de suscripción (/api/submit), el campo email es vulnerable a SSTI. Dado que la máquina se llama "Nunchucks", el motor objetivo es probablemente Nunjucks.
+
+Identificación del Payload: El motor Nunjucks permite acceso a objetos globales. El siguiente payload se utilizó para confirmar RCE (Remote Code Execution):
+
+JavaScript
+
+{{range.constructor("return global.process.mainModule.require('child_process').execSync('id')")()}}
+Explotación:
+
+Interceptamos la petición con Burp Suite.
+
+Inyectamos un Reverse Shell codificado para obtener acceso como el usuario david.
+
+Localización de la flag: /home/david/user.txt.
+
+Escalada de Privilegios: El desafío de AppArmor:
+
+Enumeración de Vectores:
+
+Al buscar binarios con permisos especiales, encontramos capacidades (capabilities) inusuales: getcap -r / 2>/dev/null
+
+Resultado: /usr/bin/perl = cap_setuid+ep
+
+Significado: Perl puede cambiar su UID al de cualquier usuario (incluyendo root).
+
+El Bloqueo de AppArmor:
+Al intentar ejecutar un exploit simple de Perl para escalar, el sistema deniega la acción. 
+Esto se debe a un perfil de AppArmor que restringe las operaciones de Perl incluso con capacidades elevadas.
+
+El Bypass
+Se descubrió que el perfil de AppArmor estaba vinculado a la ruta específica del binario. Sin embargo, el sistema permitía la ejecución de scripts que utilizaban Perl de forma indirecta o mediante copias mal ubicadas.
+
+Exploit de escalada: Creamos un script simple en Perl para ejecutar /bin/sh y forzamos el setuid:
+
+/usr/bin/perl -e 'use POSIX qw(setuid); POSIX::setuid(0); exec "/bin/sh";'
+Debido a una configuración permisiva en los scripts de mantenimiento (o ejecutando el binario desde una ubicación no restringida), logramos evadir la política y obtener una shell de root.
+
+Recomendaciones de Hardening:
+
+Sanitización de Inputs (Context-Aware): No basta con filtrar caracteres; los motores de plantillas deben configurarse en modo "Sandboxed" y 
+validar rigurosamente cualquier entrada que se procese en el lado del servidor.
+
+Principio de Menor Privilegio (Capabilities): Las capacidades de Linux son potentes. 
+El binario perl no debería tener cap_setuid de forma persistente. Se recomienda usar sudo con restricciones específicas de comandos.
+
+AppArmor Hardening: Las políticas de AppArmor deben basarse en el contenido/función y no solo en rutas de binarios, 
+para evitar que copias del ejecutable evadan las restricciones.
