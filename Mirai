@@ -1,0 +1,90 @@
+Resumen Ejecutivo:
+
+Vulnerabilidad: Credenciales por defecto (Default Credentials).
+
+Escalada de Privilegios: Mala configuración de Sudo (Privileged Access).
+
+Habilidad Destacada: Análisis forense digital (Data Recovery) en dispositivos de bloques.
+
+Impacto: Control total del nodo IoT y recuperación de información confidencial borrada.
+
+Proceso Técnico:
+
+Reconocimiento y Enumeración:
+
+El escaneo inicial con Nmap permitió identificar una superficie de ataque común en dispositivos embebidos y centros multimedia:
+
+Puerto	Servicio	Versión / Notas
+22	SSH	OpenSSH 6.7p1 (Debian)
+80	HTTP	Interfaz web de Pi-hole
+32400	HTTP	Servidor multimedia Plex
+53	DNS	FTL de Pi-hole
+
+Exportar a Hojas de cálculo
+
+Acceso Inicial:
+
+Dada la naturaleza del sistema (Raspberry Pi), se procedió a probar las credenciales de fábrica documentadas para este hardware:
+
+Usuario: pi
+
+Contraseña: raspberry
+
+Resultado: Acceso exitoso vía SSH. Este vector de ataque emula el comportamiento del malware real "Mirai", 
+que infectó miles de dispositivos IoT mediante ataques de fuerza bruta basados en credenciales predeterminadas.
+
+Escalada de Privilegios:
+Una vez dentro del sistema, se auditó la configuración de permisos del usuario pi. Se detectó una configuración de sudo excesivamente permisiva:
+
+pi@raspberrypi:~$ sudo -l
+Matching Defaults entries for pi on localhost:
+env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
+
+user pi may run the following commands on localhost:
+(ALL : ALL) ALL
+Al permitir ejecutar cualquier comando como root sin restricción, la escalada fue inmediata: sudo su -
+
+Análisis Forense (Data Recovery):
+
+Tras obtener acceso de root, el archivo root.txt indicaba que la flag había sido borrada. Se identificó una unidad USB montada que contenía restos de la información:
+
+Localización: El dispositivo estaba en /media/usbstick.
+
+Problema: 
+
+El archivo damnit.txt confirmaba el borrado accidental de la flag.
+
+Técnica: 
+Se realizó una extracción de cadenas de texto directamente desde el dispositivo de bloques (/dev/sdb), 
+ya que el borrado lógico no elimina los datos físicos de los sectores hasta que son sobrescritos.
+
+Recuperación de la flag desde el dispositivo de bloques:
+
+strings /dev/sdb | grep -E "[0-9a-f]{32}"
+
+Mitigación y Recomendaciones:
+
+Hardening de Credenciales: 
+
+Implementar el cambio obligatorio de contraseñas por defecto en el primer arranque del dispositivo.
+
+Seguridad SSH: Deshabilitar el login de root y restringir el acceso a pi mediante llaves SSH, eliminando la autenticación por contraseña.
+
+Principio de Menor Privilegio: Ajustar el archivo /etc/sudoers para que el usuario no tenga permisos (ALL : ALL) ALL.
+
+Borrado Seguro: Utilizar herramientas como shred para eliminar archivos sensibles, evitando que sean recuperables mediante técnicas forenses simples.
+
+Excelente. Tu estructura es sólida y profesional. Para cerrar el documento con broche de oro en tu repositorio, 
+aquí tienes una conclusión estratégica que puedes añadir al final.
+
+Esta conclusión refuerza tu perfil como auditor, resumiendo no solo el "cómo", sino el "por qué" de este ejercicio.
+
+Conclusión:
+
+La resolución de Mirai es un recordatorio crítico de que la seguridad en entornos IoT no solo depende de parches de software, 
+sino de una configuración básica robusta. El éxito del ataque no se debió a un exploit complejo (0-day), 
+sino a la explotación de debilidades de configuración humana: credenciales de fábrica y permisos de administración excesivos.
+
+Además, la fase de recuperación de la flag subraya que en un entorno real de respuesta ante incidentes, el borrado de archivos no es garantía de confidencialidad, 
+y el análisis de dispositivos de bloques es una herramienta indispensable para cualquier analista forense.
+
