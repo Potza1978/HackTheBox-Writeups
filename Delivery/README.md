@@ -1,4 +1,4 @@
-# HackTheBox: Delivery - WriteUp Detallado 🚩
+# HackTheBox: Delivery - WriteUp Detallado 
 
 ##  Información del Laboratorio
 * **Target IP:** 10.129.10.53
